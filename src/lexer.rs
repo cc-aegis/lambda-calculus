@@ -11,8 +11,14 @@ pub struct Lexer<'a> {
 }
 
 impl Lexer<'_> {
-    fn skip_whitespace(&mut self) {
-        while self.chars.next_if(|&(_, c)| c.is_whitespace()).is_some() {}
+    /// Advances internal iterator forward until non-whitespace character appears. Return last
+    /// whitespace character skipped, if any was skipped.
+    fn skip_whitespace(&mut self) -> Option<(usize, char)> {
+        let mut result = None;
+        while let Some(c) = self.chars.next_if(|&(_, c)| c.is_whitespace()) {
+            result = Some(c);
+        }
+        result
     }
 }
 
@@ -26,7 +32,10 @@ impl Iterator for Lexer<'_> {
     type Item = CompilerResult<Ranged<Token>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.skip_whitespace();
+        let last_whitespace_character = self.skip_whitespace();
+        if let Some((idx, '\n')) = last_whitespace_character {
+            return Some(Ok((idx..=idx, Token::NewDefinition)));
+        }
 
         match self.chars.next()? {
             (idx, 'λ') => Some(Ok((idx..=idx, Token::Lambda))),
